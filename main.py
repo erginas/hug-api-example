@@ -1,24 +1,29 @@
 import hug
-from sqlalchemy import Column, ForeignKey, Integer, String
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationships
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
+import json
+from dbcreate import Articles, Members, Base
 
-Base = declarative_base()
+engine =  create_engine('sqlite:///example.db')
+
+Base.metadata.bind = engine
+DBSession = sessionmaker(bind=engine)
+
+session = DBSession()
 
 
-class Members(Base):
-    __tablename__ = 'members'
-    id = Column(Integer,primary_key=True)
-    member_name = Column(String(25), nullable=False)
-    member_email = Column(String(35),nullable=False)
-    member_password = Column(String(500))
+def to_json(self, rel=None):
+    def extended_encoder(x):
+        if isinstance(x, datetime):
+            return x.isoformat()
+        if isinstance(x, UUID):
+            return str(x)
 
-class Articles(Base):
-    __tablename__ = 'articles'
-    id = Column(Integer, primary_key=True)
-    article_name = Column(String(100), nullable=False)
-    article_content = Column(String(0))
-    article_img = Column(String(0))
-    author = relationships
-
+    if rel is None:
+        rel = self.RELATIONSHIPS_TO_DICT
+    return json.dumps(self.to_dict(rel), default=extended_encoder)
+@hug.get()
+def articles(id= hug.types.number):
+    allarticles = session.query(Articles).all()
+    allarticles = to_json(allarticles)
+    return allarticles
